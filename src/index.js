@@ -11,12 +11,12 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // =============================[Connect DataBase]=========================
 mongoose
   .connect(
-    "mongodb+srv://Seema:C5PtEdt23kmtx9ov@cluster0.gjunl.mongodb.net/group65database?retryWrites=true&w=majority",
+    "mongodb+srv://sahilkushwaha:aasahil@cluster0.jluapfr.mongodb.net/group5database?retryWrites=true&w=majority",
     {
       useNewUrlParser: true,
     }
   )
-  .then(() => console.log("DataBase is connected"))
+  .then(() => console.log("MongoDb is connected "))
   .catch((err) => console.log(err.message));
 
 app.use("/", route);
