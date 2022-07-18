@@ -1,15 +1,13 @@
 //=================[Imports]==============
 const shortid = require('shortid')
 const urlModel = require('../models/urlModel')
-const validUrl = require('valid-url')
 
 // ====================================[ Create Url ]=================================
 
 const createUrl = async (req, res) => {
     try {
+    
         const url = req.body.longUrl
-        if (!url) return res.status(400).send({ status: false, message: 'Long url required' })
-        if (!validUrl.isUri(url)) return res.status(400).send({ status: false, message: 'Invalid URL' })
         //---------(check url is present)
         let checkUrl = await urlModel.findOne({ longUrl: url })
         if (checkUrl) return res.status(200).send({ status: true, message: 'Url is already shorten', data: 
