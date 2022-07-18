@@ -16,7 +16,7 @@ mongoose
       useNewUrlParser: true,
     }
   )
-  .then(() => console.log("MongoDb is connected "))
+  .then(() => console.log("database is connected "))
   .catch((err) => console.log(err.message));
 
 app.use("/", route);
