@@ -1,27 +1,49 @@
 //=================[Imports]==============
 const shortid = require('shortid')
 const urlModel = require('../models/urlModel')
+const redis = require("../cache/redis")
+
+
+//------------(validUrl) 
+const validUrl = (value) => {
+    let urlRegex = /(ftp|http|https|FTP|HTTP|HTTPS):\/\/(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%@!\-/]))?/;
+    if (urlRegex.test(value))
+        return true;
+}
 
 // ====================================[ Create Url ]=================================
 
 const createUrl = async (req, res) => {
     try {
-    
+
+        const body = req.body
         const url = req.body.longUrl
-        //---------(check url is present)
-        let checkUrl = await urlModel.findOne({ longUrl: url })
-        if (checkUrl) return res.status(200).send({ status: true, message: 'Url is already shorten', data: 
-        {longUrl: checkUrl.longUrl, shortUrl: checkUrl.shortUrl, urlCode: checkUrl.urlCode} })
+        if (Object.keys(body).length === 0) return res.status(400).send({ status: false, message: 'please provide data ,body Should not be empty' })
+        if (!url) return res.status(400).send({ status: false, message: 'Url is required' })
+        if (!validUrl(url)) return res.status(400).send({ status: false, message: 'Invalid URL provided please check the URL and try again.' })
 
         //--------(generate short url code)
-        const urlCode = shortid.generate()
+        const urlCode = shortid.generate().toLowerCase()
         shortUrl = `https://localhost:3000/${urlCode}`
+
+        //---------(check url is present) 
+        let cachedUrlData = await redis.GET_ASYNC(`${req.body.longUrl}`)
+        if (cachedUrlData) {
+            let checkUrl = JSON.parse(cachedUrlData)
+            return res.status(200).send({status: true, message: 'Url is already shorten', data: checkUrl})
+        }
+        let urlDoc = await urlModel.findOne({ longUrl: url }).select({ _id: 0, __v: 0 });
+        if (urlDoc) {
+            await redis.SET_ASYNC(`${req.body.longUrl}`, JSON.stringify(urlDoc))
+            return res.status(200).send({ status: true, message: 'Url is already shorten', data: urlDoc })
+        }
 
         //-------(create response)
         let response = { longUrl: url, shortUrl, urlCode: urlCode }
         const create = await urlModel.create(response)
         //-------(send response)
-        return res.status(201).send({ status: true, data: { longUrl: url, shortUrl: shortUrl, urlCode: urlCode } })
+        return res.status(201).send({ status: true, data: response })
+
     } catch (err) {
         res.status(500).send({ status: false, message: err.message })
     }
@@ -31,21 +53,22 @@ const createUrl = async (req, res) => {
 
 const getUrl = async (req, res) => {
     try {
-
         let urlCode = req.params.urlCode
-        //-------(Check Code is present)
-        let checkCode = await urlModel.findOne({urlCode:urlCode})
-        if(!checkCode) return res.status(400).send({status: false, message: 'Invalid URL Code or Not Found'})
-        //-------(redirect to long url)
-        if(checkCode) return res.redirect(302, checkCode.longUrl)
+        let checkUrlInCache = await redis.GET_ASYNC(`${urlCode}`)
+        if (checkUrlInCache) {
+            let con = JSON.parse(checkUrlInCache)
+            res.redirect(302, con.longUrl)
+        } else {
+            let urlDoc = await urlModel.findOne({ urlCode: urlCode });
+            if (!urlDoc) return res.status(400).send({ status: false, message: 'Invalid URL Code or Not Found' })
+            await redis.SET_ASYNC(`${urlCode}`, JSON.stringify(urlDoc))
+            return res.redirect(302, urlDoc.longUrl)
+        }
 
     } catch (err) {
         res.status(500).send({ status: false, message: err.message })
     }
 }
-
-
-
 
 module.exports.createUrl = createUrl
 module.exports.getUrl = getUrl
