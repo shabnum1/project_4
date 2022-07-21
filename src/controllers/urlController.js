@@ -24,7 +24,7 @@ const createUrl = async (req, res) => {
 
         //--------(generate short url code)
         const urlCode = shortid.generate().toLowerCase()
-        shortUrl = `https://localhost:3000/${urlCode}`
+        shortUrl = `http://localhost:3000/${urlCode}`
 
         //---------(check url is present) 
         let cachedUrlData = await redis.GET_ASYNC(`${req.body.longUrl}`)
@@ -34,7 +34,7 @@ const createUrl = async (req, res) => {
         }
         let urlDoc = await urlModel.findOne({ longUrl: url }).select({ _id: 0, __v: 0 });
         if (urlDoc) {
-            await redis.SET_ASYNC(`${req.body.longUrl}`, JSON.stringify(urlDoc))
+            await redis.SETEX_ASYNC(`${req.body.longUrl}`, 60*60*24*2, JSON.stringify(urlDoc))
             return res.status(200).send({ status: true, message: 'Url is already shorten', data: urlDoc })
         }
 
@@ -60,8 +60,8 @@ const getUrl = async (req, res) => {
             res.redirect(302, con.longUrl)
         } else {
             let urlDoc = await urlModel.findOne({ urlCode: urlCode });
-            if (!urlDoc) return res.status(400).send({ status: false, message: 'Invalid URL Code or Not Found' })
-            await redis.SET_ASYNC(`${urlCode}`, JSON.stringify(urlDoc))
+            if (!urlDoc) return res.status(404).send({ status: false, message: 'Invalid URL Code or Not Found' })
+            await redis.SETEX_ASYNC(`${urlCode}`, 60*60*24*2 , JSON.stringify(urlDoc))
             return res.redirect(302, urlDoc.longUrl)
         }
 
