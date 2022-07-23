@@ -6,7 +6,7 @@ const redis = require("../cache/redis")
 
 //------------(validUrl) 
 const validUrl = (value) => {
-    let urlRegex = /(ftp|http|https|FTP|HTTP|HTTPS):\/\/(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%@!\-/]))?/;
+    let urlRegex = /^(http(s)?:\/\/)?(www.)?([a-zA-Z0-9])+([\-\.]{1}[a-zA-Z0-9]+)*\.[a-zA-Z]{2,5}(:[0-9]{1,5})?(\/[^\s]*)?$/;
     if (urlRegex.test(value))
         return true;
 }
@@ -30,12 +30,12 @@ const createUrl = async (req, res) => {
         let cachedUrlData = await redis.GET_ASYNC(`${req.body.longUrl}`)
         if (cachedUrlData) {
             let checkUrl = JSON.parse(cachedUrlData)
-            return res.status(200).send({status: true, message: 'Url is already shorten', data: checkUrl})
+            return res.status(200).send({status: true, message: 'Url is already shorten,found in cache', data: checkUrl})
         }
         let urlDoc = await urlModel.findOne({ longUrl: url }).select({ _id: 0, __v: 0 });
         if (urlDoc) {
             await redis.SETEX_ASYNC(`${req.body.longUrl}`, 60*60*24*2, JSON.stringify(urlDoc))
-            return res.status(200).send({ status: true, message: 'Url is already shorten', data: urlDoc })
+            return res.status(200).send({ status: true, message: 'Url is already shorten,found in DB', data: urlDoc })
         }
 
         //-------(create response)
